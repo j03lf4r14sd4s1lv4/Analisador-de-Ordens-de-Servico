@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de OS - Filtros Organizados</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #eef2f7; margin: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #1a2a3a; border-bottom: 3px solid #2a7de1; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .upload-area { border: 2px dashed #bbb; padding: 25px; text-align: center; border-radius: 10px; background: #fafbfc; margin-bottom: 25px; }
+        .upload-area input[type="file"] { font-size: 16px; }
+
+        /* Painel de filtros em grade */
+        .filters-panel {
+            background: #f0f3f7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .filter-group {
+            background: white;
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filter-group .options {
+            max-height: 110px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding-right: 4px;
+            flex: 1;
+        }
+        .filter-group .options label {
+            font-weight: normal;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 1px 0;
+        }
+        .filter-group .options input[type="checkbox"] {
+            margin: 0;
+            flex-shrink: 0;
+        }
+        .filter-group .filter-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 6px;
+            border-top: 1px solid #eee;
+            padding-top: 6px;
+        }
+        .filter-group .filter-actions button {
+            background: #e0e4ea;
+            border: none;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .filter-group .filter-actions button:hover { background: #c8cdd6; }
+        .filter-group .date-range {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-group .date-range input[type="date"] {
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            flex: 1;
+            min-width: 80px;
+        }
+        .filter-group .clear-date-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 2px 12px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-top: 4px;
+            align-self: flex-start;
+        }
+        .filter-group .clear-date-btn:hover { background: #5a6268; }
+
+        .stats-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 12px 0;
+            background: #e9edf2;
+            padding: 10px 18px;
+            border-radius: 8px;
+            align-items: center;
+        }
+        .stats-item {
+            background: white;
+            padding: 4px 16px;
+            border-radius: 30px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            font-size: 0.9rem;
+        }
+        .clear-all { margin-left: auto; }
+
+        .summary-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 18px 0;
+        }
+        .summary-card {
+            background: #f8fafc;
+            border: 1px solid #dde;
+            border-radius: 8px;
+            padding: 12px 16px;
+            flex: 1 1 180px;
+            min-width: 150px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .summary-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+            color: #1a2a3a;
+            border-bottom: 1px solid #dde;
+            padding-bottom: 4px;
+        }
+        .summary-card table {
+            width: 100%;
+            font-size: 0.8rem;
+            border-collapse: collapse;
+        }
+        .summary-card td {
+            padding: 3px 5px;
+            border-bottom: 1px solid #e0e4ea;
+            cursor: default;
+        }
+        .summary-card td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+        .summary-card tr.clickable td {
+            cursor: pointer;
+        }
+        .summary-card tr.clickable:hover td {
+            background: #e6f0ff;
+        }
+        .summary-card tr.active td {
+            background: #cce5ff;
+            font-weight: bold;
+        }
+
+        .btn {
+            background: #2a7de1;
+            color: white;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.85rem;
+        }
+        .btn:hover { background: #1a5fb0; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #b02a37; }
+        .btn-download { background: #28a745; }
+        .btn-download:hover { background: #1e7e34; }
+        .btn-outline { background: #6c757d; }
+        .btn-outline:hover { background: #5a6268; }
+
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #dde;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        th {
+            background: #2a7de1;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 10px 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #e0e4ea;
+        }
+        tr:nth-child(even) { background: #f8fafc; }
+        .info { color: #555; padding: 10px 0; }
+
+        /* Responsivo */
+        @media (max-width: 700px) {
+            .filters-panel { grid-template-columns: 1fr; }
+            .stats-bar { flex-direction: column; align-items: stretch; }
+            .clear-all { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📊 Analisador de Ordens de Serviço</h1>
+    <div class="upload-area">
+        <label for="fileUpload" style="font-weight:600; display:block; margin-bottom:10px;">📁 Carregue seu arquivo (CSV ou XLSX)</label>
+        <input type="file" id="fileUpload" accept=".csv,.xlsx,.xls">
+        <div id="fileInfo" class="info" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Filtros -->
+    <div id="filtersPanel" class="filters-panel" style="display:none;"></div>
+
+    <!-- Estatísticas -->
+    <div id="statsBar" class="stats-bar" style="display:none;">
+        <span id="countDisplay" class="stats-item">📌 Total: 0</span>
+        <span id="statusDisplay" class="stats-item">🏷️ Status mais comum: -</span>
+        <span id="quickFilterDisplay" class="stats-item" style="display:none; background:#ffc107;">🔍 Filtro rápido ativo</span>
+        <button class="btn btn-danger clear-all" id="clearFiltersBtn">🧹 Limpar todos os filtros</button>
+        <button class="btn btn-outline" id="clearQuickFiltersBtn" style="display:none;">✖️ Limpar filtro rápido</button>
+    </div>
+
+    <!-- Resumos -->
+    <div id="summarySection" class="summary-section" style="display:none;"></div>
+
+    <!-- Download -->
+    <div id="downloadArea" style="display:none; margin: 10px 0;">
+        <button class="btn btn-download" id="downloadBtn">⬇️ Baixar filtrado (CSV)</button>
+    </div>
+
+    <!-- Tabela -->
+    <div id="tableWrapper" class="table-wrap" style="display:none;">
+        <table id="resultTable">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // ---------- Variáveis ----------
+    let originalData = [];
+    let filteredData = [];
+    let allColumns = [];
+    let currentFilters = {};
+    let dateReservadaFilter = { start: null, end: null };
+    let activeQuickFilter = null;
+
+    // Colunas que terão filtro checkbox
+    const filterColumns = ['Filial', 'Status', 'Cliente', 'Assunto', 'Cidade', 'Prioridade', 'Gerada por', 'Colaborador', 'Status conexão'];
+    // Colunas a exibir na tabela
+    const displayColumns = ['ID', 'Filial', 'Abertura', 'Status', 'Cliente', 'Assunto', 'Cidade', 'Prioridade', 'Gerada por', 'Colaborador', 'Final', 'Data reservada', 'Status conexão'];
+
+    // --- ASSUNTOS PADRÃO (apenas os 7 solicitados) ---
+    const defaultAssuntos = [
+        'REPARO - CLIENTE ATENUADO',
+        'REPARO - MUDANÇA DE PONTO INTERNO',
+        'REPARO - REPARO APLICATIVOS',
+        'REPARO - REPARO DE OSCILAÇÃO',
+        'REPARO - REPETIDOR DE SINAL',
+        'REPARO - TROCA DE EQUIPAMENTO',
+        'REPARO- SEM CONEXÃO'
+    ];
+
+    // ---------- Utilitários ----------
+    function cleanValue(val) {
+        if (typeof val === 'string') {
+            val = val.trim();
+            if (val.startsWith('"')) val = val.substring(1);
+            if (val.endsWith('"')) val = val.slice(0, -1);
+            if (val.startsWith('=')) val = val.substring(1);
+            if (val.startsWith('"')) val = val.substring(1);
+            if (val.endsWith('"')) val = val.slice(0, -1);
+        }
+        return val;
+    }
+
+    function parseDateOnly(str) {
+        if (!str || typeof str !== 'string') return null;
+        let parts = str.trim().split(' ');
+        let datePart = parts[0];
+        let d = datePart.split('/');
+        if (d.length !== 3) return null;
+        let day = parseInt(d[0]), month = parseInt(d[1])-1, year = parseInt(d[2]);
+        if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+        return new Date(year, month, day);
+    }
+
+    function formatDate(d) {
+        if (!d) return '';
+        let day = String(d.getDate()).padStart(2,'0');
+        let month = String(d.getMonth()+1).padStart(2,'0');
+        let year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // ---------- Leitura do arquivo ----------
+    function handleFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'csv') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csv = e.target.result;
+                Papa.parse(csv, {
+                    delimiter: ';',
+                    quoteChar: '"',
+                    header: true,
+                    skipEmptyLines: true,
+                    transform: function(value) { return cleanValue(value); },
+                    complete: function(results) {
+                        if (results.errors.length) {
+                            alert('Erro ao ler CSV: ' + results.errors[0].message);
+                            return;
+                        }
+                        processData(results.data);
+                    }
+                });
+            };
+            reader.readAsText(file, 'UTF-8');
+        } else if (ext === 'xlsx' || ext === 'xls') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                const cleaned = json.map(row => {
+                    let newRow = {};
+                    for (let key in row) {
+                        newRow[key] = cleanValue(row[key]);
+                    }
+                    return newRow;
+                });
+                processData(cleaned);
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            alert('Formato não suportado. Use .csv, .xlsx ou .xls');
+        }
+    }
+
+    // ---------- Processamento ----------
+    function processData(dataArray) {
+        if (!dataArray || dataArray.length === 0) {
+            alert('Nenhum dado encontrado.');
+            return;
+        }
+        originalData = dataArray;
+        allColumns = Object.keys(originalData[0]);
+
+        // Extrair datas para resumos
+        originalData.forEach(row => {
+            let rawAbertura = row['Abertura'] || '';
+            let dtAbertura = parseDateOnly(rawAbertura);
+            row['_dataAbertura'] = dtAbertura ? formatDate(dtAbertura) : '';
+
+            let rawReservada = row['Data reservada'] || '';
+            let dtReservada = parseDateOnly(rawReservada);
+            row['_dataReservada'] = dtReservada ? formatDate(dtReservada) : '';
+            row['_dataReservadaObj'] = dtReservada;
+            row['_temAgendamento'] = (rawReservada.trim() !== '');
+        });
+
+        // Inicializa filtros (todos null = sem restrição)
+        currentFilters = {};
+        filterColumns.forEach(col => {
+            if (allColumns.includes(col)) {
+                currentFilters[col] = null;
+            }
+        });
+
+        buildFiltersPanel();
+        applyFilters();
+
+        document.getElementById('fileInfo').innerHTML = `✅ ${originalData.length} registros carregados.`;
+        document.getElementById('filtersPanel').style.display = 'grid';
+        document.getElementById('statsBar').style.display = 'flex';
+        document.getElementById('summarySection').style.display = 'flex';
+        document.getElementById('downloadArea').style.display = 'block';
+        document.getElementById('tableWrapper').style.display = 'block';
+    }
+
+    // ---------- Construir os filtros (organizados) ----------
+    function buildFiltersPanel() {
+        const panel = document.getElementById('filtersPanel');
+        panel.innerHTML = '';
+
+        // Para cada coluna, criar um grupo com checkboxes
+        filterColumns.forEach(col => {
+            if (!allColumns.includes(col)) return;
+            const values = [...new Set(originalData.map(row => row[col] || ''))].filter(v => v !== '').sort();
+            if (values.length === 0) return;
+
+            const group = document.createElement('div');
+            group.className = 'filter-group';
+
+            const label = document.createElement('label');
+            label.textContent = col;
+            // Mostra quantos selecionados
+            const countSpan = document.createElement('span');
+            countSpan.style.fontWeight = 'normal';
+            countSpan.style.fontSize = '0.7rem';
+            countSpan.style.color = '#666';
+            countSpan.id = 'count-' + col.replace(/\s/g, '');
+            label.appendChild(countSpan);
+            group.appendChild(label);
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+
+            // Para cada valor, criar checkbox
+            values.forEach(v => {
+                const lbl = document.createElement('label');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = v;
+                cb.dataset.col = col;
+
+                // Marcação padrão: para Assunto, usar defaultAssuntos; para os demais, tudo marcado
+                if (col === 'Assunto') {
+                    cb.checked = defaultAssuntos.includes(v);
+                } else {
+                    cb.checked = true;
+                }
+
+                cb.addEventListener('change', function() {
+                    updateFilterFromCheckboxes(col);
+                });
+                lbl.appendChild(cb);
+                lbl.appendChild(document.createTextNode(v));
+                optionsDiv.appendChild(lbl);
+            });
+
+            group.appendChild(optionsDiv);
+
+            // Botões "Todos" e "Nenhum"
+            const actions = document.createElement('div');
+            actions.className = 'filter-actions';
+            const btnAll = document.createElement('button');
+            btnAll.textContent = 'Todos';
+            btnAll.addEventListener('click', function() {
+                const cbs = group.querySelectorAll('input[type="checkbox"]');
+                cbs.forEach(cb => cb.checked = true);
+                updateFilterFromCheckboxes(col);
+            });
+            const btnNone = document.createElement('button');
+            btnNone.textContent = 'Nenhum';
+            btnNone.addEventListener('click', function() {
+                const cbs = group.querySelectorAll('input[type="checkbox"]');
+                cbs.forEach(cb => cb.checked = false);
+                updateFilterFromCheckboxes(col);
+            });
+            actions.appendChild(btnAll);
+            actions.appendChild(btnNone);
+            group.appendChild(actions);
+
+            panel.appendChild(group);
+        });
+
+        // Filtro especial: Data reservada (calendário)
+        if (allColumns.includes('Data reservada')) {
+            const group = document.createElement('div');
+            group.className = 'filter-group';
+
+            const label = document.createElement('label');
+            label.textContent = 'Data reservada (intervalo)';
+            group.appendChild(label);
+
+            const rangeDiv = document.createElement('div');
+            rangeDiv.className = 'date-range';
+            rangeDiv.innerHTML = `
+                <span>De</span>
+                <input type="date" id="reservadaStart">
+                <span>até</span>
+                <input type="date" id="reservadaEnd">
+            `;
+            group.appendChild(rangeDiv);
+
+            const clearBtn = document.createElement('button');
+            clearBtn.textContent = 'Limpar datas';
+            clearBtn.className = 'clear-date-btn';
+            clearBtn.addEventListener('click', function() {
+                document.getElementById('reservadaStart').value = '';
+                document.getElementById('reservadaEnd').value = '';
+                dateReservadaFilter.start = null;
+                dateReservadaFilter.end = null;
+                applyFilters();
+            });
+            group.appendChild(clearBtn);
+
+            panel.appendChild(group);
+
+            document.getElementById('reservadaStart').addEventListener('change', function() {
+                dateReservadaFilter.start = this.value ? new Date(this.value + 'T00:00:00') : null;
+                applyFilters();
+            });
+            document.getElementById('reservadaEnd').addEventListener('change', function() {
+                dateReservadaFilter.end = this.value ? new Date(this.value + 'T23:59:59') : null;
+                applyFilters();
+            });
+        }
+
+        // Botões globais
+        document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
+        document.getElementById('clearQuickFiltersBtn').addEventListener('click', clearQuickFilters);
+
+        // Atualizar contadores iniciais
+        updateFilterCounts();
+    }
+
+    // Atualiza o contador de itens selecionados em cada filtro
+    function updateFilterCounts() {
+        const groups = document.querySelectorAll('.filter-group');
+        groups.forEach(group => {
+            const cbs = group.querySelectorAll('input[type="checkbox"]');
+            const checked = group.querySelectorAll('input[type="checkbox"]:checked');
+            const countSpan = group.querySelector('label span');
+            if (countSpan) {
+                countSpan.textContent = `(${checked.length}/${cbs.length})`;
+            }
+        });
+    }
+
+    // ---------- Atualizar filtro a partir dos checkboxes ----------
+    function updateFilterFromCheckboxes(col) {
+        const group = document.querySelector(`.filter-group:has(input[data-col="${col}"])`);
+        if (!group) return;
+        const cbs = group.querySelectorAll('input[type="checkbox"]:checked');
+        const selected = Array.from(cbs).map(cb => cb.value);
+        currentFilters[col] = selected.length > 0 ? selected : null;
+        updateFilterCounts();
+        applyFilters();
+    }
+
+    // ---------- Limpar todos os filtros ----------
+    function clearAllFilters() {
+        // Resetar checkboxes
+        const allCbs = document.querySelectorAll('#filtersPanel input[type="checkbox"]');
+        allCbs.forEach(cb => {
+            const col = cb.dataset.col;
+            if (col === 'Assunto') {
+                cb.checked = defaultAssuntos.includes(cb.value);
+            } else {
+                cb.checked = true;
+            }
+        });
+
+        // Atualizar currentFilters
+        filterColumns.forEach(col => {
+            if (allColumns.includes(col)) {
+                const group = document.querySelector(`.filter-group:has(input[data-col="${col}"])`);
+                if (group) {
+                    const cbs = group.querySelectorAll('input[type="checkbox"]:checked');
+                    const selected = Array.from(cbs).map(cb => cb.value);
+                    currentFilters[col] = selected.length > 0 ? selected : null;
+                }
+            }
+        });
+
+        // Limpar datas
+        document.getElementById('reservadaStart').value = '';
+        document.getElementById('reservadaEnd').value = '';
+        dateReservadaFilter.start = null;
+        dateReservadaFilter.end = null;
+
+        clearQuickFilters();
+        updateFilterCounts();
+        applyFilters();
+    }
+
+    // ---------- Filtros rápidos (clique nos cards) ----------
+    function toggleQuickFilter(col, value) {
+        if (activeQuickFilter && activeQuickFilter.col === col && activeQuickFilter.value === value) {
+            clearQuickFilters();
+        } else {
+            activeQuickFilter = { col: col, value: value };
+            document.getElementById('quickFilterDisplay').style.display = 'inline-block';
+            document.getElementById('clearQuickFiltersBtn').style.display = 'inline-block';
+            document.getElementById('quickFilterDisplay').innerHTML = `🔍 Filtro rápido: ${col} = ${value}`;
+            applyFilters();
+        }
+    }
+
+    function clearQuickFilters() {
+        activeQuickFilter = null;
+        document.getElementById('quickFilterDisplay').style.display = 'none';
+        document.getElementById('clearQuickFiltersBtn').style.display = 'none';
+        document.querySelectorAll('.summary-card tr').forEach(tr => tr.classList.remove('active'));
+        applyFilters();
+    }
+
+    // ---------- Aplicar todos os filtros ----------
+    function applyFilters() {
+        let data = [...originalData];
+
+        // Filtros checkbox
+        for (let col in currentFilters) {
+            const selected = currentFilters[col];
+            if (selected && Array.isArray(selected) && selected.length > 0) {
+                data = data.filter(row => selected.includes(row[col] || ''));
+            }
+        }
+
+        // Filtro data reservada
+        if (dateReservadaFilter.start && dateReservadaFilter.end) {
+            data = data.filter(row => {
+                const d = row['_dataReservadaObj'];
+                if (!d) return false;
+                return d >= dateReservadaFilter.start && d <= dateReservadaFilter.end;
+            });
+        } else if (dateReservadaFilter.start) {
+            data = data.filter(row => {
+                const d = row['_dataReservadaObj'];
+                return d && d >= dateReservadaFilter.start;
+            });
+        } else if (dateReservadaFilter.end) {
+            data = data.filter(row => {
+                const d = row['_dataReservadaObj'];
+                return d && d <= dateReservadaFilter.end;
+            });
+        }
+
+        // Filtro rápido
+        if (activeQuickFilter) {
+            const col = activeQuickFilter.col;
+            const value = activeQuickFilter.value;
+            data = data.filter(row => (row[col] || '') === value);
+        }
+
+        filteredData = data;
+        updateStatsAndCount();
+        renderSummaries();
+        renderTable();
+        updateDownload();
+
+        // Destacar linha do filtro rápido nos cards
+        if (activeQuickFilter) {
+            const col = activeQuickFilter.col;
+            const value = activeQuickFilter.value;
+            const cardTitles = {
+                'Assunto': '📋 Assuntos',
+                'Colaborador': '👤 Agendamentos por Colaborador'
+            };
+            const title = cardTitles[col];
+            if (title) {
+                document.querySelectorAll('.summary-card').forEach(card => {
+                    const h3 = card.querySelector('h3');
+                    if (h3 && h3.textContent === title) {
+                        card.querySelectorAll('tr').forEach(tr => {
+                            const td = tr.querySelector('td:first-child');
+                            if (td && td.textContent === value) {
+                                tr.classList.add('active');
+                            } else {
+                                tr.classList.remove('active');
+                            }
+                        });
+                    }
+                });
+            }
+        }
+        updateFilterCounts();
+    }
+
+    // ---------- Estatísticas rápidas ----------
+    function updateStatsAndCount() {
+        const total = filteredData.length;
+        document.getElementById('countDisplay').textContent = `📌 Total: ${total}`;
+        if (total === 0) {
+            document.getElementById('statusDisplay').textContent = '🏷️ Status mais comum: -';
+            return;
+        }
+        if (allColumns.includes('Status')) {
+            const statusCount = {};
+            filteredData.forEach(r => {
+                let s = r['Status'] || 'Desconhecido';
+                statusCount[s] = (statusCount[s]||0)+1;
+            });
+            let maxStatus = Object.keys(statusCount).reduce((a,b) => statusCount[a] > statusCount[b] ? a : b);
+            document.getElementById('statusDisplay').textContent = `🏷️ Status mais comum: ${maxStatus} (${statusCount[maxStatus]})`;
+        }
+    }
+
+    // ---------- Resumos (cards) ----------
+    function renderSummaries() {
+        const container = document.getElementById('summarySection');
+        container.innerHTML = '';
+
+        if (filteredData.length === 0) {
+            container.innerHTML = '<div class="summary-card" style="flex:1; text-align:center; color:#999;">Nenhum dado para resumir.</div>';
+            return;
+        }
+
+        // 1. Assunto
+        const byAssunto = {};
+        filteredData.forEach(r => {
+            let key = r['Assunto'] || 'Sem assunto';
+            byAssunto[key] = (byAssunto[key]||0)+1;
+        });
+        const sortedAssunto = Object.entries(byAssunto).sort((a,b) => b[1]-a[1]);
+
+        // 2. Gerada por
+        const byGeradaPor = {};
+        filteredData.forEach(r => {
+            let key = r['Gerada por'] || 'Não informado';
+            byGeradaPor[key] = (byGeradaPor[key]||0)+1;
+        });
+        const sortedGeradaPor = Object.entries(byGeradaPor).sort((a,b) => b[1]-a[1]);
+
+        // 3. Dia da Abertura
+        const byDiaAbertura = {};
+        filteredData.forEach(r => {
+            let key = r['_dataAbertura'] || 'Sem data';
+            byDiaAbertura[key] = (byDiaAbertura[key]||0)+1;
+        });
+        const sortedDiaAbertura = Object.entries(byDiaAbertura).sort((a,b) => a[0].localeCompare(b[0]));
+
+        // 4. Data reservada (por dia)
+        const byDataReservada = {};
+        filteredData.forEach(r => {
+            let key = r['_dataReservada'] || 'Sem reserva';
+            byDataReservada[key] = (byDataReservada[key]||0)+1;
+        });
+        const sortedDataReservada = Object.entries(byDataReservada).sort((a,b) => a[0].localeCompare(b[0]));
+
+        // 5. Agendamentos por Colaborador
+        const byColaboradorAgend = {};
+        filteredData.forEach(r => {
+            if (r['_temAgendamento'] && r['Data reservada'] && r['Data reservada'].trim() !== '') {
+                let key = r['Colaborador'] || 'Não informado';
+                byColaboradorAgend[key] = (byColaboradorAgend[key]||0)+1;
+            }
+        });
+        const sortedColaboradorAgend = Object.entries(byColaboradorAgend).sort((a,b) => b[1]-a[1]);
+
+        const cardAssunto = createClickableSummaryCard('📋 Assuntos', sortedAssunto, 'Assunto');
+        const cardGerada = createClickableSummaryCard('👤 Quem abriu', sortedGeradaPor, null);
+        const cardDia = createClickableSummaryCard('📅 Dia Abertura', sortedDiaAbertura, null);
+        const cardReservada = createClickableSummaryCard('📆 Data Reservada (Agendamento)', sortedDataReservada, null);
+        const cardColaboradorAgend = createClickableSummaryCard('👤 Agendamentos por Colaborador', sortedColaboradorAgend, 'Colaborador');
+
+        container.appendChild(cardAssunto);
+        container.appendChild(cardGerada);
+        container.appendChild(cardDia);
+        container.appendChild(cardReservada);
+        container.appendChild(cardColaboradorAgend);
+    }
+
+    function createClickableSummaryCard(title, dataArray, filterCol) {
+        const card = document.createElement('div');
+        card.className = 'summary-card';
+        const h3 = document.createElement('h3');
+        h3.textContent = title;
+        card.appendChild(h3);
+
+        const table = document.createElement('table');
+        if (dataArray.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.textContent = 'Nenhum dado';
+            td.colSpan = 2;
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            table.appendChild(tr);
+        } else {
+            dataArray.forEach(([key, count]) => {
+                const tr = document.createElement('tr');
+                const td1 = document.createElement('td');
+                td1.textContent = key;
+                const td2 = document.createElement('td');
+                td2.textContent = count;
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+
+                if (filterCol) {
+                    tr.classList.add('clickable');
+                    tr.addEventListener('click', function(e) {
+                        toggleQuickFilter(filterCol, key);
+                    });
+                }
+
+                table.appendChild(tr);
+            });
+        }
+        card.appendChild(table);
+        return card;
+    }
+
+    // ---------- Tabela ----------
+    function renderTable() {
+        const thead = document.getElementById('tableHead');
+        const tbody = document.getElementById('tableBody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        const colsToShow = displayColumns.filter(c => allColumns.includes(c));
+
+        if (filteredData.length === 0 || colsToShow.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">Nenhum dado para exibir.</td></tr>';
+            return;
+        }
+
+        let headerRow = document.createElement('tr');
+        colsToShow.forEach(col => {
+            let th = document.createElement('th');
+            th.textContent = col;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+
+        filteredData.forEach(row => {
+            let tr = document.createElement('tr');
+            colsToShow.forEach(col => {
+                let td = document.createElement('td');
+                let val = row[col] !== undefined ? row[col] : '';
+                td.textContent = val;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    // ---------- Download ----------
+    function updateDownload() {
+        const btn = document.getElementById('downloadBtn');
+        btn.onclick = function() {
+            if (filteredData.length === 0) {
+                alert('Não há dados para baixar.');
+                return;
+            }
+            const colsToShow = displayColumns.filter(c => allColumns.includes(c));
+            let csvRows = [];
+            csvRows.push(colsToShow.join(';'));
+            filteredData.forEach(row => {
+                let vals = colsToShow.map(col => {
+                    let val = row[col] !== undefined ? row[col] : '';
+                    if (typeof val === 'string' && (val.includes(';') || val.includes('"'))) {
+                        val = '"' + val.replace(/"/g, '""') + '"';
+                    }
+                    return val;
+                });
+                csvRows.push(vals.join(';'));
+            });
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'resumo_filtrado.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        };
+    }
+
+    // ---------- Evento de upload ----------
+    document.getElementById('fileUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        handleFile(file);
+    });
+</script>
+</body>
+</html>
