@@ -3,26 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analisador de OS - Filtros Organizados</title>
+    <title>Analisador de OS - Modo Paisagem</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* Reset e layout base */
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: #eef2f7; margin: 20px; }
-        .container { max-width: 1600px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h1 { color: #1a2a3a; border-bottom: 3px solid #2a7de1; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-        .upload-area { border: 2px dashed #bbb; padding: 25px; text-align: center; border-radius: 10px; background: #fafbfc; margin-bottom: 25px; }
+        body {
+            background: #eef2f7;
+            margin: 0;
+            padding: 10px 15px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+        }
+        h1 {
+            color: #1a2a3a;
+            border-bottom: 3px solid #2a7de1;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.6rem;
+        }
+        .upload-area {
+            border: 2px dashed #bbb;
+            padding: 25px;
+            text-align: center;
+            border-radius: 10px;
+            background: #fafbfc;
+            margin-bottom: 25px;
+        }
         .upload-area input[type="file"] { font-size: 16px; }
 
-        /* Painel de filtros em grade */
+        /* Filtros em grid - mais colunas em telas largas */
         .filters-panel {
             background: #f0f3f7;
-            padding: 20px;
+            padding: 18px 20px;
             border-radius: 10px;
             margin-bottom: 20px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 14px;
         }
         .filter-group {
             background: white;
@@ -92,7 +121,7 @@
             border-radius: 4px;
             font-size: 0.8rem;
             flex: 1;
-            min-width: 80px;
+            min-width: 70px;
         }
         .filter-group .clear-date-btn {
             background: #6c757d;
@@ -107,11 +136,56 @@
         }
         .filter-group .clear-date-btn:hover { background: #5a6268; }
 
+        /* Barra de pesquisa - horizontal */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            margin-bottom: 18px;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1px solid #ccc;
+            border-radius: 30px;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.2s;
+            min-width: 200px;
+        }
+        .search-bar input:focus {
+            border-color: #2a7de1;
+            box-shadow: 0 0 0 3px rgba(42,125,225,0.15);
+        }
+        .search-bar .search-icon { font-size: 1.3rem; }
+        .search-bar .clear-search {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 8px;
+        }
+        .search-bar .clear-search:hover { color: #333; }
+        .search-bar .search-count {
+            font-size: 0.9rem;
+            color: #555;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        /* Estatísticas */
         .stats-bar {
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
-            margin: 12px 0;
+            margin: 12px 0 18px 0;
             background: #e9edf2;
             padding: 10px 18px;
             border-radius: 8px;
@@ -126,6 +200,7 @@
         }
         .clear-all { margin-left: auto; }
 
+        /* Resumos - mais espaçados */
         .summary-section {
             display: flex;
             flex-wrap: wrap;
@@ -137,25 +212,25 @@
             border: 1px solid #dde;
             border-radius: 8px;
             padding: 12px 16px;
-            flex: 1 1 180px;
-            min-width: 150px;
-            max-height: 250px;
+            flex: 1 1 200px;
+            min-width: 170px;
+            max-height: 260px;
             overflow-y: auto;
         }
         .summary-card h3 {
             margin: 0 0 8px 0;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #1a2a3a;
             border-bottom: 1px solid #dde;
             padding-bottom: 4px;
         }
         .summary-card table {
             width: 100%;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             border-collapse: collapse;
         }
         .summary-card td {
-            padding: 3px 5px;
+            padding: 4px 6px;
             border-bottom: 1px solid #e0e4ea;
             cursor: default;
         }
@@ -184,6 +259,7 @@
             cursor: pointer;
             transition: 0.2s;
             font-size: 0.85rem;
+            white-space: nowrap;
         }
         .btn:hover { background: #1a5fb0; }
         .btn-danger { background: #dc3545; }
@@ -193,18 +269,21 @@
         .btn-outline { background: #6c757d; }
         .btn-outline:hover { background: #5a6268; }
 
+        /* TABELA - ocupando toda a largura, com texto visível */
         .table-wrap {
             overflow-x: auto;
             margin-top: 15px;
-            max-height: 500px;
+            max-height: 550px;
             overflow-y: auto;
             border: 1px solid #dde;
             border-radius: 8px;
+            width: 100%;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.85rem;
+            table-layout: auto; /* permite que as colunas se ajustem ao conteúdo */
         }
         th {
             background: #2a7de1;
@@ -212,22 +291,38 @@
             position: sticky;
             top: 0;
             z-index: 2;
-            padding: 10px 8px;
+            padding: 10px 10px;
             text-align: left;
             white-space: nowrap;
+            font-weight: 600;
         }
         td {
-            padding: 8px;
+            padding: 8px 10px;
             border-bottom: 1px solid #e0e4ea;
+            white-space: normal;      /* quebra de linha */
+            word-break: break-word;   /* quebra palavras longas */
+            max-width: 350px;         /* evita que uma coluna tome conta */
+            vertical-align: top;
         }
         tr:nth-child(even) { background: #f8fafc; }
         .info { color: #555; padding: 10px 0; }
 
-        /* Responsivo */
-        @media (max-width: 700px) {
+        /* Responsivo para telas menores */
+        @media (max-width: 1024px) {
+            .filters-panel { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+        }
+        @media (max-width: 768px) {
             .filters-panel { grid-template-columns: 1fr; }
             .stats-bar { flex-direction: column; align-items: stretch; }
             .clear-all { margin-left: 0; }
+            .search-bar { flex-wrap: wrap; }
+            .search-bar input { min-width: 120px; }
+            .container { padding: 12px; }
+            td { max-width: 200px; }
+        }
+        @media (min-width: 1400px) {
+            .filters-panel { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+            td { max-width: 450px; }
         }
     </style>
 </head>
@@ -242,6 +337,14 @@
 
     <!-- Filtros -->
     <div id="filtersPanel" class="filters-panel" style="display:none;"></div>
+
+    <!-- Barra de pesquisa -->
+    <div id="searchBar" class="search-bar" style="display:none;">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="clienteSearch" placeholder="Pesquisar cliente..." />
+        <button class="clear-search" id="clearSearchBtn" title="Limpar pesquisa">✕</button>
+        <span class="search-count" id="searchCount">0 clientes encontrados</span>
+    </div>
 
     <!-- Estatísticas -->
     <div id="statsBar" class="stats-bar" style="display:none;">
@@ -277,13 +380,11 @@
     let currentFilters = {};
     let dateReservadaFilter = { start: null, end: null };
     let activeQuickFilter = null;
+    let searchTerm = '';
 
-    // Colunas que terão filtro checkbox
-    const filterColumns = ['Filial', 'Status', 'Cliente', 'Assunto', 'Cidade', 'Prioridade', 'Gerada por', 'Colaborador', 'Status conexão'];
-    // Colunas a exibir na tabela
-    const displayColumns = ['ID', 'Filial', 'Abertura', 'Status', 'Cliente', 'Assunto', 'Cidade', 'Prioridade', 'Gerada por', 'Colaborador', 'Final', 'Data reservada', 'Status conexão'];
+    const filterColumns = ['Filial', 'Status', 'Cliente', 'Assunto', 'Cidade', 'Prioridade', 'Gerada por', 'Colaborador', 'Status conexão', 'Melhor horário'];
+    const displayColumns = ['ID', 'Filial', 'Abertura', 'Status', 'Cliente', 'Assunto', 'Cidade', 'Prioridade', 'Gerada por', 'Colaborador', 'Final', 'Data reservada', 'Status conexão', 'Melhor horário'];
 
-    // --- ASSUNTOS PADRÃO (apenas os 7 solicitados) ---
     const defaultAssuntos = [
         'REPARO - CLIENTE ATENUADO',
         'REPARO - MUDANÇA DE PONTO INTERNO',
@@ -380,7 +481,6 @@
         originalData = dataArray;
         allColumns = Object.keys(originalData[0]);
 
-        // Extrair datas para resumos
         originalData.forEach(row => {
             let rawAbertura = row['Abertura'] || '';
             let dtAbertura = parseDateOnly(rawAbertura);
@@ -393,7 +493,6 @@
             row['_temAgendamento'] = (rawReservada.trim() !== '');
         });
 
-        // Inicializa filtros (todos null = sem restrição)
         currentFilters = {};
         filterColumns.forEach(col => {
             if (allColumns.includes(col)) {
@@ -402,22 +501,41 @@
         });
 
         buildFiltersPanel();
+        setupSearch();
         applyFilters();
 
         document.getElementById('fileInfo').innerHTML = `✅ ${originalData.length} registros carregados.`;
         document.getElementById('filtersPanel').style.display = 'grid';
+        document.getElementById('searchBar').style.display = 'flex';
         document.getElementById('statsBar').style.display = 'flex';
         document.getElementById('summarySection').style.display = 'flex';
         document.getElementById('downloadArea').style.display = 'block';
         document.getElementById('tableWrapper').style.display = 'block';
     }
 
-    // ---------- Construir os filtros (organizados) ----------
+    // ---------- Barra de pesquisa ----------
+    function setupSearch() {
+        const input = document.getElementById('clienteSearch');
+        const clearBtn = document.getElementById('clearSearchBtn');
+
+        input.addEventListener('input', function() {
+            searchTerm = this.value.trim().toLowerCase();
+            applyFilters();
+        });
+
+        clearBtn.addEventListener('click', function() {
+            input.value = '';
+            searchTerm = '';
+            applyFilters();
+            input.focus();
+        });
+    }
+
+    // ---------- Construir filtros ----------
     function buildFiltersPanel() {
         const panel = document.getElementById('filtersPanel');
         panel.innerHTML = '';
 
-        // Para cada coluna, criar um grupo com checkboxes
         filterColumns.forEach(col => {
             if (!allColumns.includes(col)) return;
             const values = [...new Set(originalData.map(row => row[col] || ''))].filter(v => v !== '').sort();
@@ -427,8 +545,7 @@
             group.className = 'filter-group';
 
             const label = document.createElement('label');
-            label.textContent = col;
-            // Mostra quantos selecionados
+            label.textContent = col === 'Melhor horário' ? 'Período' : col;
             const countSpan = document.createElement('span');
             countSpan.style.fontWeight = 'normal';
             countSpan.style.fontSize = '0.7rem';
@@ -440,7 +557,6 @@
             const optionsDiv = document.createElement('div');
             optionsDiv.className = 'options';
 
-            // Para cada valor, criar checkbox
             values.forEach(v => {
                 const lbl = document.createElement('label');
                 const cb = document.createElement('input');
@@ -448,7 +564,6 @@
                 cb.value = v;
                 cb.dataset.col = col;
 
-                // Marcação padrão: para Assunto, usar defaultAssuntos; para os demais, tudo marcado
                 if (col === 'Assunto') {
                     cb.checked = defaultAssuntos.includes(v);
                 } else {
@@ -465,7 +580,6 @@
 
             group.appendChild(optionsDiv);
 
-            // Botões "Todos" e "Nenhum"
             const actions = document.createElement('div');
             actions.className = 'filter-actions';
             const btnAll = document.createElement('button');
@@ -489,7 +603,7 @@
             panel.appendChild(group);
         });
 
-        // Filtro especial: Data reservada (calendário)
+        // Filtro Data reservada
         if (allColumns.includes('Data reservada')) {
             const group = document.createElement('div');
             group.className = 'filter-group';
@@ -532,18 +646,13 @@
             });
         }
 
-        // Botões globais
         document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
         document.getElementById('clearQuickFiltersBtn').addEventListener('click', clearQuickFilters);
-
-        // Atualizar contadores iniciais
         updateFilterCounts();
     }
 
-    // Atualiza o contador de itens selecionados em cada filtro
     function updateFilterCounts() {
-        const groups = document.querySelectorAll('.filter-group');
-        groups.forEach(group => {
+        document.querySelectorAll('.filter-group').forEach(group => {
             const cbs = group.querySelectorAll('input[type="checkbox"]');
             const checked = group.querySelectorAll('input[type="checkbox"]:checked');
             const countSpan = group.querySelector('label span');
@@ -553,7 +662,6 @@
         });
     }
 
-    // ---------- Atualizar filtro a partir dos checkboxes ----------
     function updateFilterFromCheckboxes(col) {
         const group = document.querySelector(`.filter-group:has(input[data-col="${col}"])`);
         if (!group) return;
@@ -564,9 +672,7 @@
         applyFilters();
     }
 
-    // ---------- Limpar todos os filtros ----------
     function clearAllFilters() {
-        // Resetar checkboxes
         const allCbs = document.querySelectorAll('#filtersPanel input[type="checkbox"]');
         allCbs.forEach(cb => {
             const col = cb.dataset.col;
@@ -577,7 +683,6 @@
             }
         });
 
-        // Atualizar currentFilters
         filterColumns.forEach(col => {
             if (allColumns.includes(col)) {
                 const group = document.querySelector(`.filter-group:has(input[data-col="${col}"])`);
@@ -589,18 +694,20 @@
             }
         });
 
-        // Limpar datas
         document.getElementById('reservadaStart').value = '';
         document.getElementById('reservadaEnd').value = '';
         dateReservadaFilter.start = null;
         dateReservadaFilter.end = null;
+
+        document.getElementById('clienteSearch').value = '';
+        searchTerm = '';
 
         clearQuickFilters();
         updateFilterCounts();
         applyFilters();
     }
 
-    // ---------- Filtros rápidos (clique nos cards) ----------
+    // ---------- Filtros rápidos ----------
     function toggleQuickFilter(col, value) {
         if (activeQuickFilter && activeQuickFilter.col === col && activeQuickFilter.value === value) {
             clearQuickFilters();
@@ -621,11 +728,10 @@
         applyFilters();
     }
 
-    // ---------- Aplicar todos os filtros ----------
+    // ---------- Aplicar filtros ----------
     function applyFilters() {
         let data = [...originalData];
 
-        // Filtros checkbox
         for (let col in currentFilters) {
             const selected = currentFilters[col];
             if (selected && Array.isArray(selected) && selected.length > 0) {
@@ -633,7 +739,13 @@
             }
         }
 
-        // Filtro data reservada
+        if (searchTerm) {
+            data = data.filter(row => {
+                const cliente = (row['Cliente'] || '').toLowerCase();
+                return cliente.includes(searchTerm);
+            });
+        }
+
         if (dateReservadaFilter.start && dateReservadaFilter.end) {
             data = data.filter(row => {
                 const d = row['_dataReservadaObj'];
@@ -652,7 +764,6 @@
             });
         }
 
-        // Filtro rápido
         if (activeQuickFilter) {
             const col = activeQuickFilter.col;
             const value = activeQuickFilter.value;
@@ -661,17 +772,18 @@
 
         filteredData = data;
         updateStatsAndCount();
+        updateSearchCount();
         renderSummaries();
         renderTable();
         updateDownload();
 
-        // Destacar linha do filtro rápido nos cards
         if (activeQuickFilter) {
             const col = activeQuickFilter.col;
             const value = activeQuickFilter.value;
             const cardTitles = {
                 'Assunto': '📋 Assuntos',
-                'Colaborador': '👤 Agendamentos por Colaborador'
+                'Colaborador': '👤 Agendamentos por Colaborador',
+                'Melhor horário': '🕒 Período'
             };
             const title = cardTitles[col];
             if (title) {
@@ -693,7 +805,11 @@
         updateFilterCounts();
     }
 
-    // ---------- Estatísticas rápidas ----------
+    function updateSearchCount() {
+        document.getElementById('searchCount').textContent = `${filteredData.length} clientes encontrados`;
+    }
+
+    // ---------- Estatísticas ----------
     function updateStatsAndCount() {
         const total = filteredData.length;
         document.getElementById('countDisplay').textContent = `📌 Total: ${total}`;
@@ -712,7 +828,7 @@
         }
     }
 
-    // ---------- Resumos (cards) ----------
+    // ---------- Resumos ----------
     function renderSummaries() {
         const container = document.getElementById('summarySection');
         container.innerHTML = '';
@@ -722,7 +838,6 @@
             return;
         }
 
-        // 1. Assunto
         const byAssunto = {};
         filteredData.forEach(r => {
             let key = r['Assunto'] || 'Sem assunto';
@@ -730,7 +845,6 @@
         });
         const sortedAssunto = Object.entries(byAssunto).sort((a,b) => b[1]-a[1]);
 
-        // 2. Gerada por
         const byGeradaPor = {};
         filteredData.forEach(r => {
             let key = r['Gerada por'] || 'Não informado';
@@ -738,7 +852,6 @@
         });
         const sortedGeradaPor = Object.entries(byGeradaPor).sort((a,b) => b[1]-a[1]);
 
-        // 3. Dia da Abertura
         const byDiaAbertura = {};
         filteredData.forEach(r => {
             let key = r['_dataAbertura'] || 'Sem data';
@@ -746,7 +859,6 @@
         });
         const sortedDiaAbertura = Object.entries(byDiaAbertura).sort((a,b) => a[0].localeCompare(b[0]));
 
-        // 4. Data reservada (por dia)
         const byDataReservada = {};
         filteredData.forEach(r => {
             let key = r['_dataReservada'] || 'Sem reserva';
@@ -754,7 +866,6 @@
         });
         const sortedDataReservada = Object.entries(byDataReservada).sort((a,b) => a[0].localeCompare(b[0]));
 
-        // 5. Agendamentos por Colaborador
         const byColaboradorAgend = {};
         filteredData.forEach(r => {
             if (r['_temAgendamento'] && r['Data reservada'] && r['Data reservada'].trim() !== '') {
@@ -764,17 +875,26 @@
         });
         const sortedColaboradorAgend = Object.entries(byColaboradorAgend).sort((a,b) => b[1]-a[1]);
 
+        const byPeriodo = {};
+        filteredData.forEach(r => {
+            let key = r['Melhor horário'] || 'Não informado';
+            byPeriodo[key] = (byPeriodo[key]||0)+1;
+        });
+        const sortedPeriodo = Object.entries(byPeriodo).sort((a,b) => b[1]-a[1]);
+
         const cardAssunto = createClickableSummaryCard('📋 Assuntos', sortedAssunto, 'Assunto');
         const cardGerada = createClickableSummaryCard('👤 Quem abriu', sortedGeradaPor, null);
         const cardDia = createClickableSummaryCard('📅 Dia Abertura', sortedDiaAbertura, null);
         const cardReservada = createClickableSummaryCard('📆 Data Reservada (Agendamento)', sortedDataReservada, null);
         const cardColaboradorAgend = createClickableSummaryCard('👤 Agendamentos por Colaborador', sortedColaboradorAgend, 'Colaborador');
+        const cardPeriodo = createClickableSummaryCard('🕒 Período', sortedPeriodo, 'Melhor horário');
 
         container.appendChild(cardAssunto);
         container.appendChild(cardGerada);
         container.appendChild(cardDia);
         container.appendChild(cardReservada);
         container.appendChild(cardColaboradorAgend);
+        container.appendChild(cardPeriodo);
     }
 
     function createClickableSummaryCard(title, dataArray, filterCol) {
